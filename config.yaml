@@ -1,0 +1,36 @@
+senders:
+  - email: YOUR_SENDER_1@yourdomain.com
+    warmup_start: "2026-08-05"
+    max_daily_cap: 100
+    app_password_env: GMAIL_APP_PASSWORD_1
+  - email: YOUR_SENDER_2@yourdomain.com
+    warmup_start: "2026-08-12"
+    max_daily_cap: 100
+    app_password_env: GMAIL_APP_PASSWORD_2
+
+role_keywords:
+  - "financial analyst"
+  - "finance manager"
+  - "controller"
+  - "CFO"
+  - "VP finance"
+  - "accounting manager"
+  - "FP&A"
+
+sources:
+  remoteok: true
+  indeed: true
+  career_pages: []
+  # career_pages:
+  #   - url: "https://example.com/careers"
+  #     company: "Example Corp"
+
+outreach:
+  service_name: "Fractional Finance & Analysis"
+  service_pitch: "fractional financial analysis and modeling services"
+  sender_company: "YOUR_COMPANY_NAME"
+  sender_name: "YOUR_NAME"
+  sender_title: "YOUR_TITLE"
+  business_address: "YOUR_BUSINESS_ADDRESS"
+  website: "https://yourwebsite.com"
+  unsubscribe_base_url: "https://YOUR_VERCEL_APP.vercel.app"

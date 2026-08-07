@@ -1,0 +1,13 @@
+CLAUDE.md
+.env
+.env.local
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+venv/
+.venv/
+node_modules/
+.next/
+dashboard/.env.local
+*.json.bak
