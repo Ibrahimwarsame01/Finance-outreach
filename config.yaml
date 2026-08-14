@@ -9,17 +9,25 @@ senders:
     app_password_env: GMAIL_APP_PASSWORD_2
 
 role_keywords:
-  - "financial analyst"
-  - "finance manager"
-  - "controller"
-  - "CFO"
-  - "VP finance"
-  - "accounting manager"
-  - "FP&A"
+  - "financial controller"
+  - "accountant"
 
 sources:
   remoteok: true
   indeed: true
+  # Countries Indeed searches (ISO codes). Indeed's API is per-country, so
+  # add every market you want to cover. More countries = more API calls per run.
+  indeed_countries:
+    - US   # United States
+    - CA   # Canada
+    - GB   # United Kingdom
+    - AU   # Australia
+    - IE   # Ireland
+    # - IN   # India
+    # - DE   # Germany
+    # - FR   # France
+    # - NL   # Netherlands
+    # - SG   # Singapore
   career_pages: []
   # career_pages:
   #   - url: "https://example.com/careers"
@@ -28,9 +36,9 @@ sources:
 outreach:
   service_name: "Fractional Finance & Analysis"
   service_pitch: "fractional financial analysis and modeling services"
-  sender_company: "YOUR_COMPANY_NAME"
+  sender_company: "Clearbooks Accounting"
   sender_name: "YOUR_NAME"
   sender_title: "YOUR_TITLE"
   business_address: "YOUR_BUSINESS_ADDRESS"
-  website: "https://yourwebsite.com"
+  website: "https://clearbooksplusaccounting.com/"
   unsubscribe_base_url: "https://YOUR_VERCEL_APP.vercel.app"

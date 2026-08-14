@@ -81,42 +81,51 @@ def scrape_remoteok(keywords: list[str]) -> list[dict]:
 
 # ── Indeed (via MCP connector — stub for pipeline) ────────────────────────────
 
-def scrape_indeed(keywords: list[str]) -> list[dict]:
+def scrape_indeed(keywords: list[str], countries: list[str]) -> list[dict]:
     # The Indeed MCP connector is available for interactive Claude use.
     # For the pipeline, use the Indeed Publisher API:
     # https://ads.indeed.com/jobroll/xmlfeed
-    # Set INDEED_PUBLISHER_ID env var and uncomment below.
+    # Set INDEED_PUBLISHER_ID env var to enable.
+    #
+    # `countries` is a list of ISO country codes (e.g. ["US", "CA", "GB"])
+    # from config.yaml -> sources.indeed_countries. Indeed's API is
+    # per-country, so worldwide coverage = searching each country in turn.
     publisher_id = os.getenv("INDEED_PUBLISHER_ID")
     if not publisher_id:
         logger.info("INDEED_PUBLISHER_ID not set — skipping Indeed")
         return []
 
+    if not countries:
+        logger.info("No indeed_countries configured — skipping Indeed")
+        return []
+
     leads = []
-    for kw in keywords[:3]:  # limit API calls
-        url = (
-            f"https://api.indeed.com/ads/apisearch"
-            f"?publisher={publisher_id}&q={requests.utils.quote(kw)}"
-            f"&co=CA&limit=25&format=json&v=2"
-        )
-        try:
-            resp = requests.get(url, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as e:
-            logger.error("Indeed API error for '%s': %s", kw, e)
-            continue
+    for kw in keywords[:3]:  # limit API calls per country
+        for co in countries:
+            url = (
+                f"https://api.indeed.com/ads/apisearch"
+                f"?publisher={publisher_id}&q={requests.utils.quote(kw)}"
+                f"&co={co}&limit=25&format=json&v=2"
+            )
+            try:
+                resp = requests.get(url, timeout=20)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as e:
+                logger.error("Indeed API error for '%s' in %s: %s", kw, co, e)
+                continue
 
-        for result in data.get("results", []):
-            leads.append({
-                "company": result.get("company", ""),
-                "contact_email": None,
-                "job_title": result.get("jobtitle", ""),
-                "job_url": result.get("url", ""),
-                "source": "indeed",
-            })
-        time.sleep(1)
+            for result in data.get("results", []):
+                leads.append({
+                    "company": result.get("company", ""),
+                    "contact_email": None,
+                    "job_title": result.get("jobtitle", ""),
+                    "job_url": result.get("url", ""),
+                    "source": "indeed",
+                })
+            time.sleep(1)
 
-    logger.info("Indeed: found %d leads", len(leads))
+    logger.info("Indeed: found %d leads across %d countries", len(leads), len(countries))
     return leads
 
 
@@ -174,7 +183,8 @@ def run_scrape() -> int:
         all_leads.extend(scrape_remoteok(keywords))
 
     if sources.get("indeed", False):
-        all_leads.extend(scrape_indeed(keywords))
+        countries = sources.get("indeed_countries", [])
+        all_leads.extend(scrape_indeed(keywords, countries))
 
     for page in sources.get("career_pages", []):
         all_leads.extend(scrape_career_page(page, keywords))
