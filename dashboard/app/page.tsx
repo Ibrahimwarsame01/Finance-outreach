@@ -4,6 +4,7 @@ import StatsCards from "@/components/StatsCards";
 import SendsChart from "@/components/SendsChart";
 import MailboxTable from "@/components/MailboxTable";
 import LeadsTable from "@/components/LeadsTable";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 
 async function fetchDashboardData(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
   const [sentResult, repliesResult, leadsResult] = await Promise.all([
@@ -112,6 +113,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <RealtimeRefresh />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Outreach Dashboard</h1>
         <form action="/api/logout" method="POST">
