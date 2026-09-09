@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Finance Outreach Dashboard",
-  description: "Cold outreach pipeline — sends, replies, and mailbox health",
+  title: "Outreach Console",
+  description: "Cold outreach pipeline — sends, follow-ups, warm-up, and mailbox health",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased">{children}</body>
+      <body className="font-sans bg-ink-950 text-slate-200 antialiased">{children}</body>
     </html>
   );
 }

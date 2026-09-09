@@ -1,23 +1,12 @@
 import email
 import imaplib
 import logging
-import yaml
-import os
 from datetime import datetime, timedelta
 from email.header import decode_header
 from src import supabase_client
+from src import mailer
 
 logger = logging.getLogger(__name__)
-
-
-def _load_senders() -> list[dict]:
-    with open("config.yaml") as f:
-        return yaml.safe_load(f).get("senders", [])
-
-
-def _get_app_password(sender: dict) -> str | None:
-    env_var = sender.get("app_password_env", "")
-    return os.environ.get(env_var)
 
 
 def _decode_header_value(value: str) -> str:
@@ -104,10 +93,10 @@ def _check_mailbox(sender_email: str, app_password: str) -> int:
 
 
 def run_check_replies() -> int:
-    senders = _load_senders()
+    senders = mailer.load_senders()
     total = 0
     for s in senders:
-        app_pw = _get_app_password(s)
+        app_pw = mailer.get_app_password(s)
         if not app_pw:
             continue
         total += _check_mailbox(s["email"], app_pw)

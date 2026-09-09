@@ -20,17 +20,27 @@ DROP POLICY IF EXISTS "service_role_all" ON leads;
 DROP POLICY IF EXISTS "service_role_all" ON sent_log;
 DROP POLICY IF EXISTS "service_role_all" ON replies;
 DROP POLICY IF EXISTS "service_role_all" ON unsubscribed;
+DROP POLICY IF EXISTS "service_role_all" ON warmup_log;
 
 -- 2. Logged-in users get full access to the dashboard tables
+DROP POLICY IF EXISTS "authenticated_all" ON senders;
+DROP POLICY IF EXISTS "authenticated_all" ON leads;
+DROP POLICY IF EXISTS "authenticated_all" ON sent_log;
+DROP POLICY IF EXISTS "authenticated_all" ON replies;
+DROP POLICY IF EXISTS "authenticated_all" ON unsubscribed;
+DROP POLICY IF EXISTS "authenticated_all" ON warmup_log;
 CREATE POLICY "authenticated_all" ON senders      FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON leads        FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON sent_log     FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON replies      FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_all" ON unsubscribed FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_all" ON warmup_log   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- 3. The public unsubscribe endpoint runs as the anon role. It only needs to
 --    add an email to the suppression list (the link's HMAC token is verified
 --    in the API route BEFORE this runs). Anon can INSERT/UPDATE here but can
 --    NOT read the list, so nobody can harvest your contacts.
+DROP POLICY IF EXISTS "anon_add_unsubscribe" ON unsubscribed;
+DROP POLICY IF EXISTS "anon_touch_unsubscribe" ON unsubscribed;
 CREATE POLICY "anon_add_unsubscribe" ON unsubscribed FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "anon_touch_unsubscribe" ON unsubscribed FOR UPDATE TO anon USING (true) WITH CHECK (true);

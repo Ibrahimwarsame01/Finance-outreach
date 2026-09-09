@@ -33,6 +33,47 @@ sources:
   #   - url: "https://example.com/careers"
   #     company: "Example Corp"
 
+# ── Automated mailbox warm-up ────────────────────────────────────────────────
+# Your own mailboxes email each other on a small daily schedule so Gmail sees
+# normal, replied-to conversations before you send any real cold outreach. This
+# is reputation-building traffic — it never touches real leads. Needs 2+ senders
+# (a mailbox can't warm itself).
+warmup:
+  enabled: true
+  daily_per_mailbox: 3          # warm-up emails each mailbox sends per day
+  subject_prefix: "[wu]"        # tags warm-up mail so it's never confused with outreach
+  auto_reply: true              # reply to received warm-up mail (builds real threads)
+  rescue_from_spam: true        # if a warm-up email lands in Spam, mark it not-spam
+  # Small pool of natural-sounding lines the warm-up bodies are built from.
+  # Kept in config (not hardcoded) so you can tune the "voice" without code edits.
+  snippets:
+    - "Quick note — following up on the numbers from earlier this week."
+    - "Thanks for the update, looks good on my end. Talk soon."
+    - "Got it, I'll review and circle back tomorrow."
+    - "Appreciate the quick turnaround on that. Speak later."
+    - "All set on my side — let me know if anything else comes up."
+
+# ── Follow-up sequences ──────────────────────────────────────────────────────
+# Leads that were emailed but haven't replied get gentle, threaded follow-ups.
+# delay_days = days to wait after the PREVIOUS email in that thread before this
+# step goes out. Follow-ups reuse the mailbox that sent the original (thread
+# continuity) and count against that mailbox's daily cap. Set enabled: false to
+# turn the whole feature off.
+followups:
+  enabled: true
+  steps:
+    - delay_days: 3
+      prompt: >-
+        Write a very short (2-3 sentence) friendly follow-up to a previous cold
+        email. Do not repeat the original pitch in full — just a light nudge that
+        adds one new angle on why fractional finance help fits a company that is
+        hiring for this role. End with a soft question. No subject line.
+    - delay_days: 5
+      prompt: >-
+        Write a short, polite final "break-up" follow-up. Acknowledge they're
+        busy, say this is the last time you'll reach out, and leave the door open.
+        Keep it warm and low-pressure. No subject line.
+
 outreach:
   service_name: "Fractional Finance & Analysis"
   service_pitch: "fractional financial analysis and modeling services"

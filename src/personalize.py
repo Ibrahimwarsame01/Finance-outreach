@@ -75,6 +75,44 @@ Return only the subject line + body, nothing else.
     return subject, body
 
 
+def draft_followup(lead: dict, step_prompt: str) -> str:
+    """Draft a threaded follow-up body for a lead that hasn't replied.
+
+    Returns only the body — no subject (follow-ups reuse the original subject,
+    prefixed with "Re:", so they thread in the recipient's inbox).
+    """
+    cfg = _load_outreach_config()
+    model = _get_model()
+
+    prompt = f"""You are writing a follow-up in an existing cold email thread.
+
+Sender: {cfg.get('sender_name')} — {cfg.get('sender_title')} at {cfg.get('sender_company')}
+Service being pitched: {cfg.get('service_pitch')}
+Target company: {lead.get('company')}
+Role they are hiring for: {lead.get('job_title')}
+
+Original email subject: {lead.get('email_subject')}
+
+{step_prompt}
+
+Rules:
+- Under 90 words.
+- No subject line, no greeting line with their name if you don't know it.
+- No filler ("Hope this finds you well", "Just circling back").
+- Sound like a real person nudging, not a template.
+- Do NOT sign off — a signature is added separately.
+
+Return only the follow-up body, nothing else.
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        logger.error("Gemini API error drafting follow-up for lead %s: %s", lead.get("id"), e)
+        raise
+
+
 def personalize_unsent_leads() -> int:
     from src import supabase_client
 
@@ -98,6 +136,15 @@ def personalize_unsent_leads() -> int:
 
     logger.info("Personalization complete: %d emails drafted", drafted)
     return drafted
+
+
+def finalize_body(body: str, lead: dict) -> str:
+    """Public: attach signature + CASL footer using the current config.
+
+    Used by the follow-up sender so follow-ups carry the same signature and
+    working unsubscribe link as the initial outreach.
+    """
+    return _add_signature_and_footer(body, lead, _load_outreach_config())
 
 
 def _add_signature_and_footer(body: str, lead: dict, cfg: dict) -> str:

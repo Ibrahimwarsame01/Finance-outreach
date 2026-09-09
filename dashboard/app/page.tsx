@@ -1,33 +1,47 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import Sidebar from "@/components/Sidebar";
 import StatsCards from "@/components/StatsCards";
 import SendsChart from "@/components/SendsChart";
 import MailboxTable from "@/components/MailboxTable";
 import LeadsTable from "@/components/LeadsTable";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 
-async function fetchDashboardData(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
-  const [sentResult, repliesResult, leadsResult] = await Promise.all([
-    supabase.from("sent_log").select("sender, sent_at"),
+async function fetchDashboardData(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
+) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [sentResult, repliesResult, leadsResult, warmupResult] = await Promise.all([
+    supabase.from("sent_log").select("sender, sent_at, step"),
     supabase.from("replies").select("sent_log_id, reply_body, reply_from"),
     supabase
       .from("leads")
       .select(
-        "id, company, contact_email, job_title, job_url, email_subject, email_body, sent_log(id, sender, sent_at, replies(reply_body))"
+        "id, company, contact_email, job_title, job_url, email_subject, email_body, sent_log(id, sender, sent_at, step, replies(reply_body))"
       )
       .order("scraped_at", { ascending: false })
       .limit(50),
+    // Resilient: if warmup_log doesn't exist yet, count comes back null → 0.
+    supabase
+      .from("warmup_log")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", sevenDaysAgo.toISOString()),
   ]);
 
-  const sentRows: { sender: string; sent_at: string }[] = sentResult.data ?? [];
+  const sentRows: { sender: string; sent_at: string; step: number | null }[] =
+    sentResult.data ?? [];
   const replyRows: { sent_log_id: string; reply_body: string; reply_from: string }[] =
     repliesResult.data ?? [];
 
   // Stats
   const totalSent = sentRows.length;
   const totalReplies = replyRows.length;
+  const totalFollowups = sentRows.filter((r) => (r.step ?? 0) > 0).length;
   const replyRate = totalSent > 0 ? (totalReplies / totalSent) * 100 : 0;
   const activeMailboxes = new Set(sentRows.map((r) => r.sender)).size;
+  const warmupLast7 = warmupResult.count ?? 0;
 
   // Sends over time (last 30 days)
   const cutoff = new Date();
@@ -49,7 +63,6 @@ async function fetchDashboardData(supabase: Awaited<ReturnType<typeof createServ
     mailboxSent[row.sender] = (mailboxSent[row.sender] ?? 0) + 1;
   }
 
-  // Build sent_log_id → sender map for reply attribution
   const allSentLog = await supabase.from("sent_log").select("id, sender");
   const sentLogMap: Record<string, string> = {};
   for (const row of allSentLog.data ?? []) {
@@ -70,6 +83,13 @@ async function fetchDashboardData(supabase: Awaited<ReturnType<typeof createServ
   });
 
   // Recent leads — flatten nested joins
+  type RawSend = {
+    id: string;
+    sender: string;
+    sent_at: string;
+    step: number | null;
+    replies: { reply_body: string }[] | null;
+  };
   type RawLead = {
     id: string;
     company: string;
@@ -78,25 +98,40 @@ async function fetchDashboardData(supabase: Awaited<ReturnType<typeof createServ
     job_url: string | null;
     email_subject: string | null;
     email_body: string | null;
-    sent_log:
-      | { id: string; sender: string; sent_at: string; replies: { reply_body: string }[] | null }[]
-      | null;
+    sent_log: RawSend[] | null;
   };
 
-  const leads = ((leadsResult.data as RawLead[]) ?? []).map((l) => ({
-    id: l.id,
-    company: l.company,
-    contact_email: l.contact_email,
-    job_title: l.job_title,
-    job_url: l.job_url,
-    email_subject: l.email_subject,
-    email_body: l.email_body,
-    sent_at: l.sent_log?.[0]?.sent_at ?? null,
-    sender: l.sent_log?.[0]?.sender ?? null,
-    reply_body: l.sent_log?.[0]?.replies?.[0]?.reply_body ?? null,
-  }));
+  const leads = ((leadsResult.data as RawLead[]) ?? []).map((l) => {
+    const sends = l.sent_log ?? [];
+    const initial = sends.find((s) => (s.step ?? 0) === 0) ?? sends[0];
+    const replyBody =
+      sends.map((s) => s.replies?.[0]?.reply_body).find((b) => b) ?? null;
+    return {
+      id: l.id,
+      company: l.company,
+      contact_email: l.contact_email,
+      job_title: l.job_title,
+      job_url: l.job_url,
+      email_subject: l.email_subject,
+      email_body: l.email_body,
+      sent_at: initial?.sent_at ?? null,
+      sender: initial?.sender ?? null,
+      reply_body: replyBody,
+      followups: sends.filter((s) => (s.step ?? 0) > 0).length,
+    };
+  });
 
-  return { totalSent, totalReplies, replyRate, activeMailboxes, sendsOverTime, mailboxRows, leads };
+  return {
+    totalSent,
+    totalReplies,
+    totalFollowups,
+    replyRate,
+    activeMailboxes,
+    warmupLast7,
+    sendsOverTime,
+    mailboxRows,
+    leads,
+  };
 }
 
 export default async function DashboardPage() {
@@ -108,31 +143,59 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const { totalSent, totalReplies, replyRate, activeMailboxes, sendsOverTime, mailboxRows, leads } =
-    await fetchDashboardData(supabase);
+  const data = await fetchDashboardData(supabase);
+
+  const statItems = [
+    { label: "Emails Sent", value: data.totalSent.toLocaleString(), accent: "brand" as const },
+    { label: "Replies", value: data.totalReplies.toLocaleString(), accent: "emerald" as const },
+    { label: "Reply Rate", value: `${data.replyRate.toFixed(1)}%`, accent: "emerald" as const },
+    { label: "Follow-ups", value: data.totalFollowups.toLocaleString(), accent: "accent" as const },
+    {
+      label: "Warm-ups 7d",
+      value: data.warmupLast7.toLocaleString(),
+      hint: "mailbox reputation",
+      accent: "accent" as const,
+    },
+    { label: "Active Mailboxes", value: data.activeMailboxes, accent: "slate" as const },
+  ];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="flex min-h-screen">
       <RealtimeRefresh />
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Outreach Dashboard</h1>
-        <form action="/api/logout" method="POST">
-          <button className="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
-        </form>
-      </div>
+      <Sidebar />
 
-      <StatsCards
-        totalSent={totalSent}
-        totalReplies={totalReplies}
-        replyRate={replyRate}
-        activeMailboxes={activeMailboxes}
-      />
+      <main className="min-w-0 flex-1">
+        {/* Top bar */}
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-ink-950/80 px-6 py-4 backdrop-blur">
+          <div>
+            <h1 className="text-lg font-semibold text-white">Outreach Overview</h1>
+            <p className="text-xs text-slate-500">Sends, follow-ups, warm-up & mailbox health</p>
+          </div>
+          <form action="/api/logout" method="POST">
+            <button className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
+              Sign out
+            </button>
+          </form>
+        </header>
 
-      <SendsChart data={sendsOverTime} />
+        <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+          <section id="overview">
+            <StatsCards items={statItems} />
+          </section>
 
-      <MailboxTable rows={mailboxRows} />
+          <section id="performance">
+            <SendsChart data={data.sendsOverTime} />
+          </section>
 
-      <LeadsTable leads={leads} />
-    </main>
+          <section id="mailboxes">
+            <MailboxTable rows={data.mailboxRows} />
+          </section>
+
+          <section id="leads">
+            <LeadsTable leads={data.leads} />
+          </section>
+        </div>
+      </main>
+    </div>
   );
 }
