@@ -4,9 +4,8 @@ import logging
 import requests
 import yaml
 from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
-from src import supabase_client
+from src import supabase_client, webutil
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +22,6 @@ def _keywords(config: dict) -> list[str]:
 def _matches_keywords(text: str, keywords: list[str]) -> bool:
     text = text.lower()
     return any(kw in text for kw in keywords)
-
-
-def _robots_allowed(url: str) -> bool:
-    try:
-        parsed = urlparse(url)
-        robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-        rp = RobotFileParser()
-        rp.set_url(robots_url)
-        rp.read()
-        return rp.can_fetch("*", url)
-    except Exception:
-        return True  # assume allowed if robots.txt unreachable
 
 
 # ── RemoteOK ──────────────────────────────────────────────────────────────────
@@ -135,7 +122,7 @@ def scrape_career_page(entry: dict, keywords: list[str]) -> list[dict]:
     url = entry["url"]
     company = entry["company"]
 
-    if not _robots_allowed(url):
+    if not webutil.robots_allowed(url):
         logger.info("robots.txt disallows scraping %s — skipping", url)
         return []
 

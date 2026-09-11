@@ -1,12 +1,22 @@
 senders:
-  - email: YOUR_SENDER_1@yourdomain.com
-    warmup_start: "2026-08-05"
-    max_daily_cap: 100
+  - email: alexbrown@clearbooks-plus.com
+    name: "Alex Brown"            # display name + signs emails sent from this mailbox
+    title: "Client Partnerships"  # TODO: set the real title you want to use
+    warmup_start: "2026-09-09"    # first day of warm-up (today) — drives the ramp
+    max_daily_cap: 100            # cap once fully warmed (weeks out)
     app_password_env: GMAIL_APP_PASSWORD_1
-  - email: YOUR_SENDER_2@yourdomain.com
-    warmup_start: "2026-08-12"
+  - email: sam@clearbooks-plus.com
+    name: "Sam Carter"
+    title: "Client Partnerships"
+    warmup_start: "2026-09-09"
     max_daily_cap: 100
     app_password_env: GMAIL_APP_PASSWORD_2
+  - email: josh@clearbooks-plus.com
+    name: "Josh Wang"
+    title: "Client Partnerships"
+    warmup_start: "2026-09-09"
+    max_daily_cap: 100
+    app_password_env: GMAIL_APP_PASSWORD_3
 
 role_keywords:
   - "financial controller"
@@ -78,8 +88,10 @@ outreach:
   service_name: "Fractional Finance & Analysis"
   service_pitch: "fractional financial analysis and modeling services"
   sender_company: "Clearbooks Accounting"
-  sender_name: "YOUR_NAME"
-  sender_title: "YOUR_TITLE"
-  business_address: "YOUR_BUSINESS_ADDRESS"
+  # sender_name/title are per-mailbox now (see senders[].name/title above); these
+  # are only a fallback if a sender is missing them.
+  sender_name: "Alex Brown"
+  sender_title: "Client Partnerships"
+  business_address: "YOUR_BUSINESS_ADDRESS"   # TODO: real mailing address (CASL requires this)
   website: "https://clearbooksplusaccounting.com/"
-  unsubscribe_base_url: "https://YOUR_VERCEL_APP.vercel.app"
+  unsubscribe_base_url: "https://YOUR_VERCEL_APP.vercel.app"   # TODO: your live Vercel URL

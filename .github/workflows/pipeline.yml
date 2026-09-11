@@ -29,6 +29,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GMAIL_APP_PASSWORD_1: ${{ secrets.GMAIL_APP_PASSWORD_1 }}
           GMAIL_APP_PASSWORD_2: ${{ secrets.GMAIL_APP_PASSWORD_2 }}
+          GMAIL_APP_PASSWORD_3: ${{ secrets.GMAIL_APP_PASSWORD_3 }}
           UNSUBSCRIBE_SECRET: ${{ secrets.UNSUBSCRIBE_SECRET }}
           INDEED_PUBLISHER_ID: ${{ secrets.INDEED_PUBLISHER_ID }}
         run: python src/main.py

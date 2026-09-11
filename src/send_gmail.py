@@ -2,6 +2,7 @@ import smtplib
 import logging
 from src import supabase_client
 from src import mailer
+from src import personalize
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +63,17 @@ def run_sends() -> int:
         if sender is None:
             break
 
+        # Attach this mailbox's signature + CASL footer now, so the signature
+        # persona matches the "From" mailbox.
+        full_body = personalize.finalize_body(lead["email_body"], lead, sender)
+
         domain = mailer.sender_domain(sender["email"])
         message_id = mailer.new_message_id(domain)
         msg = mailer.build_message(
             sender["email"],
             to_email,
             lead["email_subject"],
-            lead["email_body"],
+            full_body,
             message_id,
         )
 

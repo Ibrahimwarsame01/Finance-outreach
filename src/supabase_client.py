@@ -41,6 +41,23 @@ def get_unsent_leads() -> list[dict]:
     return [lead for lead in (leads.data or []) if lead["id"] not in sent_ids]
 
 
+def get_leads_without_email() -> list[dict]:
+    """Leads whose contact_email is still null — candidates for email finding."""
+    client = get_client()
+    result = (
+        client.table("leads")
+        .select("*")
+        .is_("contact_email", "null")
+        .execute()
+    )
+    return result.data or []
+
+
+def update_lead_contact_email(lead_id: str, email: str) -> None:
+    client = get_client()
+    client.table("leads").update({"contact_email": email}).eq("id", lead_id).execute()
+
+
 def is_unsubscribed(email: str) -> bool:
     client = get_client()
     result = (

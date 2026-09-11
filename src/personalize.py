@@ -125,10 +125,12 @@ def personalize_unsent_leads() -> int:
             continue  # already drafted
         try:
             subject, body = draft_email(lead)
-            full_body = _add_signature_and_footer(body, lead, cfg)
+            # Store the RAW body (no signature). The signature + CASL footer are
+            # attached at SEND time so they match the actual sending mailbox's
+            # persona — see finalize_body() / send_gmail.
             supabase_client.get_client().table("leads").update({
                 "email_subject": subject,
-                "email_body": full_body,
+                "email_body": body,
             }).eq("id", lead["id"]).execute()
             drafted += 1
         except Exception as e:
@@ -138,27 +140,40 @@ def personalize_unsent_leads() -> int:
     return drafted
 
 
-def finalize_body(body: str, lead: dict) -> str:
-    """Public: attach signature + CASL footer using the current config.
+def finalize_body(body: str, lead: dict, sender: dict | None = None) -> str:
+    """Public: attach signature + CASL footer for a specific sending mailbox.
 
-    Used by the follow-up sender so follow-ups carry the same signature and
-    working unsubscribe link as the initial outreach.
+    ``sender`` is a senders[] entry from config.yaml (with name/title). The
+    signature uses that mailbox's persona so the "From" name always matches the
+    signature. Falls back to outreach.sender_name/title if not given.
+
+    Idempotent: if the body already carries the unsubscribe footer (e.g. an old
+    draft that was signed at draft time), it's returned unchanged so it never
+    gets double-signed.
     """
-    return _add_signature_and_footer(body, lead, _load_outreach_config())
+    if FOOTER_MARKER in body:
+        return body
+    return _add_signature_and_footer(body, lead, _load_outreach_config(), sender)
 
 
-def _add_signature_and_footer(body: str, lead: dict, cfg: dict) -> str:
+FOOTER_MARKER = "To unsubscribe:"
+
+
+def _add_signature_and_footer(body: str, lead: dict, cfg: dict, sender: dict | None = None) -> str:
+    sender = sender or {}
+    name = sender.get("name") or cfg.get("sender_name")
+    title = sender.get("title") or cfg.get("sender_title")
     unsubscribe_url = _unsubscribe_url(lead.get("contact_email", ""), cfg)
     signature = (
         f"\n\nBest,\n"
-        f"{cfg.get('sender_name')}\n"
-        f"{cfg.get('sender_title')}, {cfg.get('sender_company')}\n"
+        f"{name}\n"
+        f"{title}, {cfg.get('sender_company')}\n"
         f"{cfg.get('website', '')}"
     )
     footer = (
         f"\n\n---\n"
         f"{cfg.get('sender_company')} | {cfg.get('business_address')}\n"
-        f"To unsubscribe: {unsubscribe_url}"
+        f"{FOOTER_MARKER} {unsubscribe_url}"
     )
     return body + signature + footer
 

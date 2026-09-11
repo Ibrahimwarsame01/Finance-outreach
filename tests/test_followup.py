@@ -58,7 +58,10 @@ def wired(monkeypatch):
     )
 
     monkeypatch.setattr(personalize, "draft_followup", lambda lead, prompt: "body text")
-    monkeypatch.setattr(personalize, "finalize_body", lambda body, lead: body + "\n--sig--")
+    monkeypatch.setattr(
+        personalize, "finalize_body",
+        lambda body, lead, sender=None: body + "\n--sig--",
+    )
 
     return {"sent": sent_smtp, "logged": logged}
 

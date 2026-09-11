@@ -68,7 +68,7 @@ def run_followups(now: datetime | None = None) -> int:
             continue
         cap = mailer.current_cap(s["warmup_start"], s["max_daily_cap"])
         remaining = cap - supabase_client.get_today_send_count(s["email"])
-        senders_by_email[s["email"]] = {"app_password": app_pw, "remaining": remaining}
+        senders_by_email[s["email"]] = {"app_password": app_pw, "remaining": remaining, "config": s}
 
     if not senders_by_email:
         logger.info("No usable mailboxes for follow-ups — skipping")
@@ -137,7 +137,7 @@ def run_followups(now: datetime | None = None) -> int:
         step_cfg = steps[item["next_step"]]
         try:
             body = personalize.draft_followup(lead, step_cfg.get("prompt", ""))
-            body = personalize.finalize_body(body, lead)
+            body = personalize.finalize_body(body, lead, state["config"])
         except Exception as e:
             logger.error("Failed to draft follow-up for lead %s: %s", item["lead_id"], e)
             continue

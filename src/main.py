@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 def run_pipeline() -> None:
     from src.scrape import run_scrape
+    from src.find_email import run_find_emails
     from src.personalize import personalize_unsent_leads
     from src.send_gmail import run_sends
     from src.followup import run_followups
@@ -23,6 +24,11 @@ def run_pipeline() -> None:
 
     new_leads = run_scrape()
     logger.info("Scraped %d new leads", new_leads)
+
+    # Job boards rarely give a contact email; find one from the company site so
+    # the lead is eligible to be drafted + sent (get_unsent_leads skips nulls).
+    found_emails = run_find_emails()
+    logger.info("Found contact emails for %d leads", found_emails)
 
     drafted = personalize_unsent_leads()
     logger.info("Drafted %d emails", drafted)
