@@ -57,6 +57,15 @@ def run_followups(now: datetime | None = None) -> int:
         logger.info("No follow-up steps configured — skipping")
         return 0
 
+    # Same CASL preflight as initial sends: follow-ups also carry the footer.
+    issues = personalize.outreach_config_issues()
+    if issues:
+        logger.warning(
+            "Skipping follow-ups — outreach config not send-ready (fix in config.yaml): %s",
+            ", ".join(issues),
+        )
+        return 0
+
     now = now or datetime.now(timezone.utc)
 
     # Mailbox state: only mailboxes with an app password can send. Track each

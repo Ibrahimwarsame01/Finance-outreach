@@ -8,6 +8,17 @@ logger = logging.getLogger(__name__)
 
 
 def run_sends() -> int:
+    # Preflight: never send while CASL-critical config is still a placeholder
+    # (missing business address / dead unsubscribe link). Skip gracefully rather
+    # than raise, so warm-up + reply checking still run in the same pipeline pass.
+    issues = personalize.outreach_config_issues()
+    if issues:
+        logger.warning(
+            "Skipping send run — outreach config not send-ready (fix in config.yaml): %s",
+            ", ".join(issues),
+        )
+        return 0
+
     senders = mailer.load_senders()
     leads = supabase_client.get_unsent_leads()
 

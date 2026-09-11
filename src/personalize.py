@@ -21,6 +21,29 @@ def _load_outreach_config() -> dict:
         return yaml.safe_load(f).get("outreach", {})
 
 
+# Config values that MUST be real before any cold email goes out: CASL requires
+# a genuine business address, and the unsubscribe link must point at the live
+# dashboard or opt-outs silently break. A value is "unset" if it's blank or still
+# carries a template placeholder.
+_REQUIRED_OUTREACH_FIELDS = ("business_address", "unsubscribe_base_url")
+_PLACEHOLDER_MARKERS = ("YOUR_", "yourapp.vercel.app", "YOUR_VERCEL_APP", "example.com")
+
+
+def outreach_config_issues(cfg: dict | None = None) -> list[str]:
+    """Names of CASL-critical outreach fields that are still blank/placeholder.
+
+    Empty list == safe to send. Used as a send-time preflight so the pipeline
+    never ships an email with no business address or a dead unsubscribe link.
+    """
+    cfg = cfg if cfg is not None else _load_outreach_config()
+    issues = []
+    for field in _REQUIRED_OUTREACH_FIELDS:
+        val = str(cfg.get(field, "")).strip()
+        if not val or any(marker in val for marker in _PLACEHOLDER_MARKERS):
+            issues.append(field)
+    return issues
+
+
 def draft_email(lead: dict) -> tuple[str, str]:
     """Return (subject, body) for a given lead dict."""
     cfg = _load_outreach_config()

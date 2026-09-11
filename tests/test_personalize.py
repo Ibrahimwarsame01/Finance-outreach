@@ -28,3 +28,25 @@ def test_finalize_body_is_idempotent():
     twice = personalize.finalize_body(once, LEAD, {"name": "Sam Carter", "title": "X"})
     assert once == twice
     assert twice.count(personalize.FOOTER_MARKER) == 1
+
+
+def test_outreach_config_issues_flags_placeholders():
+    cfg = {
+        "business_address": "YOUR_BUSINESS_ADDRESS",
+        "unsubscribe_base_url": "https://YOUR_VERCEL_APP.vercel.app",
+    }
+    issues = personalize.outreach_config_issues(cfg)
+    assert set(issues) == {"business_address", "unsubscribe_base_url"}
+
+
+def test_outreach_config_issues_flags_blank():
+    cfg = {"business_address": "  ", "unsubscribe_base_url": ""}
+    assert set(personalize.outreach_config_issues(cfg)) == {"business_address", "unsubscribe_base_url"}
+
+
+def test_outreach_config_issues_empty_when_ready():
+    cfg = {
+        "business_address": "123 Main St, Toronto, ON M5V 1A1",
+        "unsubscribe_base_url": "https://clearbooks-outreach.vercel.app",
+    }
+    assert personalize.outreach_config_issues(cfg) == []

@@ -62,6 +62,9 @@ def wired(monkeypatch):
         personalize, "finalize_body",
         lambda body, lead, sender=None: body + "\n--sig--",
     )
+    # Treat outreach config as send-ready (real config.yaml still has CASL
+    # placeholders, which the send-time preflight would otherwise block on).
+    monkeypatch.setattr(personalize, "outreach_config_issues", lambda cfg=None: [])
 
     return {"sent": sent_smtp, "logged": logged}
 
