@@ -94,4 +94,4 @@ outreach:
   sender_title: "Client Partnerships"
   business_address: "YOUR_BUSINESS_ADDRESS"   # TODO: real mailing address (CASL requires this)
   website: "https://clearbooksplusaccounting.com/"
-  unsubscribe_base_url: "https://YOUR_VERCEL_APP.vercel.app"   # TODO: your live Vercel URL
+  unsubscribe_base_url: "https://finance-outreach.vercel.app"   # live Vercel app (unsubscribe endpoint is at /api/unsubscribe)

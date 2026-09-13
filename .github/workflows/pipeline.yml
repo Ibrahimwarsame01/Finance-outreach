@@ -11,10 +11,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -32,4 +32,4 @@ jobs:
           GMAIL_APP_PASSWORD_3: ${{ secrets.GMAIL_APP_PASSWORD_3 }}
           UNSUBSCRIBE_SECRET: ${{ secrets.UNSUBSCRIBE_SECRET }}
           INDEED_PUBLISHER_ID: ${{ secrets.INDEED_PUBLISHER_ID }}
-        run: python src/main.py
+        run: python -m src.main   # run as a module so the `src` package imports resolve
