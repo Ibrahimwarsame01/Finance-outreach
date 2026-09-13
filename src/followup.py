@@ -176,6 +176,7 @@ def run_followups(now: datetime | None = None) -> int:
             message_id=message_id,
             step=item["next_step"] + 1,
             in_reply_to=parent.get("message_id"),
+            body=body,
         )
         logger.info(
             "Follow-up step %d sent to %s via %s", item["next_step"] + 1, to_email, sender_email

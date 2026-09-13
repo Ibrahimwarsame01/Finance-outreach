@@ -1,8 +1,9 @@
 const NAV = [
-  { label: "Overview", href: "#overview", icon: "M3 12l9-9 9 9M4 10v10h16V10" },
-  { label: "Performance", href: "#performance", icon: "M4 19V5m0 14h16M8 15l3-4 3 2 4-6" },
-  { label: "Mailboxes", href: "#mailboxes", icon: "M3 8l9 6 9-6M3 8v10h18V8M3 8l9-5 9 5" },
-  { label: "Leads", href: "#leads", icon: "M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z" },
+  { label: "Overview", href: "/#overview", icon: "M3 12l9-9 9 9M4 10v10h16V10" },
+  { label: "Performance", href: "/#performance", icon: "M4 19V5m0 14h16M8 15l3-4 3 2 4-6" },
+  { label: "Mailboxes", href: "/#mailboxes", icon: "M3 8l9 6 9-6M3 8v10h18V8M3 8l9-5 9 5" },
+  { label: "Leads", href: "/#leads", icon: "M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z" },
+  { label: "All Emails", href: "/emails", icon: "M3 7l9 6 9-6M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z" },
 ];
 
 export default function Sidebar() {

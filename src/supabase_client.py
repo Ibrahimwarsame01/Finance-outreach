@@ -76,6 +76,7 @@ def log_send(
     message_id: str,
     step: int = 0,
     in_reply_to: str | None = None,
+    body: str | None = None,
 ) -> dict:
     client = get_client()
     result = client.table("sent_log").insert({
@@ -85,6 +86,7 @@ def log_send(
         "message_id": message_id,
         "step": step,
         "in_reply_to": in_reply_to,
+        "body": body,
     }).execute()
     return result.data[0]
 

@@ -100,6 +100,7 @@ def run_sends() -> int:
             subject=lead["email_subject"],
             message_id=message_id,
             step=0,
+            body=full_body,
         )
 
         logger.info("Sent to %s via %s", to_email, sender["email"])
