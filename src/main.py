@@ -22,31 +22,43 @@ def run_pipeline() -> None:
 
     logger.info("=== Pipeline start ===")
 
-    new_leads = run_scrape()
-    logger.info("Scraped %d new leads", new_leads)
+    # Each stage runs independently. A failure in one is logged (with traceback)
+    # and the pipeline moves on to the rest, so a transient error in an early
+    # stage (a scrape source going down, an IMAP hiccup) can't stop warm-up /
+    # reply-checking from running. This runs on a ~20-min cron with all state in
+    # Supabase, so anything skipped this run is simply retried next run.
+    #
+    # Order still matters where it can: replies are checked before follow-ups so
+    # we never nudge someone who already answered; follow-ups run after the
+    # initial send so both share the same daily-cap view. Because every stage
+    # reads its inputs from Supabase (not from the previous stage's return
+    # value), running a later stage after an earlier one failed is safe — it
+    # just operates on whatever is currently in the DB.
+    stages = (
+        ("scrape", run_scrape, "Scraped %s new leads"),
+        ("find_emails", run_find_emails, "Found contact emails for %s leads"),
+        ("personalize", personalize_unsent_leads, "Drafted %s emails"),
+        ("check_replies", run_check_replies, "Logged %s new replies"),
+        ("sends", run_sends, "Sent %s emails"),
+        ("followups", run_followups, "Sent %s follow-ups"),
+        ("warmup", run_warmup, "Warm-up actions: %s"),
+    )
 
-    # Job boards rarely give a contact email; find one from the company site so
-    # the lead is eligible to be drafted + sent (get_unsent_leads skips nulls).
-    found_emails = run_find_emails()
-    logger.info("Found contact emails for %d leads", found_emails)
+    failed = []
+    for name, fn, done_msg in stages:
+        try:
+            result = fn()
+            logger.info(done_msg, result)
+        except Exception:
+            logger.exception("Stage %r failed — continuing with remaining stages", name)
+            failed.append(name)
 
-    drafted = personalize_unsent_leads()
-    logger.info("Drafted %d emails", drafted)
-
-    # Check replies first so follow-ups never nudge someone who already answered.
-    replies = run_check_replies()
-    logger.info("Logged %d new replies", replies)
-
-    sent = run_sends()
-    logger.info("Sent %d emails", sent)
-
-    # Follow-ups run after the initial send so both share the same daily cap view.
-    followups = run_followups()
-    logger.info("Sent %d follow-ups", followups)
-
-    # Warm-up traffic between our own mailboxes (reputation building only).
-    warmup_actions = run_warmup()
-    logger.info("Warm-up actions: %d", warmup_actions)
+    if failed:
+        # Still surface the failure so GitHub Actions marks the run red and
+        # notifies — but only after every stage got its chance to run.
+        logger.error("=== Pipeline finished with %d failed stage(s): %s ===",
+                     len(failed), ", ".join(failed))
+        raise SystemExit(1)
 
     logger.info("=== Pipeline complete ===")
 
