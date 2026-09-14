@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveRole } from "@/lib/role";
 import Sidebar from "@/components/Sidebar";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import EmailThreads, {
@@ -35,9 +36,13 @@ type RawLead = {
   sent_log: RawSend[] | null;
 };
 
-function buildThreads(leads: RawLead[]): Thread[] {
-  const threads = leads.map((l): Thread => {
-    const sends = l.sent_log ?? [];
+function buildThreads(leads: RawLead[], mailbox: string | null): Thread[] {
+  const threads: Thread[] = [];
+  for (const l of leads) {
+    // Non-admins only see their own mailbox's messages on each lead.
+    const sends = (l.sent_log ?? []).filter((s) => !mailbox || s.sender === mailbox);
+    // For a non-admin, skip leads their mailbox never touched.
+    if (mailbox && sends.length === 0) continue;
     const messages: ThreadMessage[] = [];
 
     for (const s of sends) {
@@ -99,7 +104,7 @@ function buildThreads(leads: RawLead[]): Thread[] {
       .sort();
     const lastActivity = times[times.length - 1] ?? l.scraped_at;
 
-    return {
+    threads.push({
       id: l.id,
       company: l.company,
       contact_email: l.contact_email,
@@ -109,8 +114,8 @@ function buildThreads(leads: RawLead[]): Thread[] {
       lastActivity,
       status,
       messages,
-    };
-  });
+    });
+  }
 
   // Most recently active threads first.
   threads.sort((a, b) => (b.lastActivity ?? "").localeCompare(a.lastActivity ?? ""));
@@ -126,6 +131,8 @@ export default async function EmailsPage() {
 
   if (!user) redirect("/login");
 
+  const role = resolveRole(user.email);
+
   const { data } = await supabase
     .from("leads")
     .select(
@@ -133,30 +140,37 @@ export default async function EmailsPage() {
     )
     .order("scraped_at", { ascending: false });
 
-  const threads = buildThreads((data as RawLead[]) ?? []);
+  const threads = buildThreads((data as RawLead[]) ?? [], role.mailbox);
 
   return (
     <div className="flex min-h-screen">
       <RealtimeRefresh />
-      <Sidebar />
+      <Sidebar isAdmin={role.isAdmin} />
 
       <main className="min-w-0 flex-1">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-ink-950/80 px-6 py-4 backdrop-blur">
           <div>
-            <h1 className="text-lg font-semibold text-white">All Emails</h1>
+            <h1 className="text-lg font-semibold text-white">Inbox</h1>
             <p className="text-xs text-slate-500">
-              Every lead, every message — full outreach threads with replies
+              {role.isAdmin
+                ? "Every mailbox · sent, received & replies in one place"
+                : `${role.email} · your sent, received & replies`}
             </p>
           </div>
-          <form action="/api/logout" method="POST">
-            <button className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            <span className="hidden rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-slate-400 sm:inline">
+              {role.isAdmin ? "Admin" : "Mailbox"}
+            </span>
+            <form action="/api/logout" method="POST">
+              <button className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
+                Sign out
+              </button>
+            </form>
+          </div>
         </header>
 
         <div className="mx-auto max-w-7xl px-6 py-8">
-          <EmailThreads threads={threads} />
+          <EmailThreads threads={threads} isAdmin={role.isAdmin} />
         </div>
       </main>
     </div>
